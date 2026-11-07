@@ -1,0 +1,148 @@
+@import url('https://fonts.googleapis.com/css2?family=Manrope:wght@400;500;600;700;800&family=Sora:wght@500;600;700;800&display=swap');
+
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+@layer base {
+  html {
+    scroll-behavior: smooth;
+  }
+
+  body {
+    @apply bg-white font-sans text-ink antialiased;
+  }
+
+  h1,
+  h2,
+  h3,
+  h4 {
+    @apply font-display;
+  }
+
+  ::selection {
+    @apply bg-sun-100 text-primary-900;
+  }
+
+  :focus-visible {
+    @apply outline-none ring-2 ring-primary-500 ring-offset-2;
+  }
+}
+
+@layer components {
+  .container-page {
+    @apply mx-auto w-full max-w-7xl px-4 sm:px-6 lg:px-8;
+  }
+
+  .btn {
+    @apply inline-flex items-center justify-center gap-2 rounded-xl px-5 py-3 text-sm font-bold transition duration-200 disabled:pointer-events-none disabled:opacity-45;
+  }
+
+  .btn-primary {
+    @apply btn bg-primary-800 text-white shadow-sm hover:bg-primary-700 active:translate-y-px;
+  }
+
+  .btn-accent {
+    @apply btn bg-accent-500 text-white shadow-sm hover:bg-accent-600 active:translate-y-px;
+  }
+
+  .btn-secondary {
+    @apply btn border border-slate-200 bg-white text-primary-800 hover:border-primary-200 hover:bg-primary-50;
+  }
+
+  .btn-ghost {
+    @apply btn text-slate-600 hover:bg-slate-100 hover:text-primary-800;
+  }
+
+  .btn-sun {
+    @apply btn bg-sun-500 text-primary-900 hover:bg-sun-400;
+  }
+
+  .input {
+    @apply w-full rounded-xl border border-slate-200 bg-white px-4 py-3 text-sm font-medium text-ink shadow-sm outline-none transition placeholder:font-normal placeholder:text-slate-400 focus:border-primary-400 focus:ring-4 focus:ring-primary-100 disabled:cursor-not-allowed disabled:bg-slate-50;
+  }
+
+  .label {
+    @apply mb-2 block text-[11px] font-extrabold uppercase tracking-[0.14em] text-slate-500;
+  }
+
+  .card {
+    @apply rounded-2xl border border-slate-200/80 bg-white shadow-soft;
+  }
+
+  .eyebrow {
+    @apply inline-flex items-center gap-2 text-xs font-extrabold uppercase tracking-[0.18em] text-accent-500;
+  }
+
+  .section-title {
+    @apply font-display text-3xl font-bold tracking-tight text-primary-900 sm:text-4xl;
+  }
+
+  .badge {
+    @apply inline-flex items-center gap-1.5 rounded-full px-3 py-1 text-[11px] font-extrabold uppercase tracking-wide;
+  }
+
+  .field-icon {
+    @apply pointer-events-none absolute left-4 top-1/2 h-4 w-4 -translate-y-1/2 text-slate-400;
+  }
+}
+
+@layer utilities {
+  .bg-dot-grid {
+    background-image: radial-gradient(rgba(18, 59, 102, 0.14) 1px, transparent 1px);
+    background-size: 22px 22px;
+  }
+
+  .bg-diagonal-stripes {
+    background-image: repeating-linear-gradient(
+      -45deg,
+      rgba(242, 201, 76, 0.9) 0,
+      rgba(242, 201, 76, 0.9) 10px,
+      rgba(214, 69, 69, 0.9) 10px,
+      rgba(214, 69, 69, 0.9) 20px
+    );
+  }
+
+  .text-balance {
+    text-wrap: balance;
+  }
+
+  .ticket-body {
+    -webkit-mask-image:
+      radial-gradient(circle at 0 62%, transparent 10px, black 10.5px),
+      radial-gradient(circle at 100% 62%, transparent 10px, black 10.5px);
+    -webkit-mask-composite: source-in;
+    mask-composite: intersect;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  *,
+  *::before,
+  *::after {
+    scroll-behavior: auto !important;
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
+  }
+}
+
+#taxigare-qr-reader {
+  width: 100%;
+  border: 0 !important;
+}
+
+#taxigare-qr-reader video {
+  width: 100% !important;
+  height: auto !important;
+  border-radius: 0.9rem;
+  object-fit: cover;
+}
+
+#taxigare-qr-reader img[alt='Info icon'] {
+  display: none;
+}
+
+#taxigare-qr-reader__dashboard {
+  display: none !important;
+}
