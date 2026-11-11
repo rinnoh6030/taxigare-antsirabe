@@ -5,6 +5,7 @@ from sqlmodel import Session, select
 
 from models import (
     PAIEMENT_PAYE,
+    Cooperative,
     Gare,
     Reservation,
     Responsable,
@@ -55,11 +56,47 @@ RESPONSABLES = [
     },
 ]
 
+COOPERATIVES = [
+    {
+        "cle": "fifimava",
+        "gare_code": "asabotsy",
+        "nom": "FIFIMAVA",
+        "telephone": "034 01 234 56",
+        "secretaire": "Rasoa Harisoa",
+        "est_premium": False,
+    },
+    {
+        "cle": "kofiam",
+        "gare_code": "vatofotsy",
+        "nom": "KOFIAM",
+        "telephone": "033 02 345 67",
+        "secretaire": "Rakoto Hery",
+        "est_premium": False,
+    },
+    {
+        "cle": "kotrafia",
+        "gare_code": "vatofotsy",
+        "nom": "Kotrafia",
+        "telephone": "034 03 456 78",
+        "secretaire": "Randrianasolo Voahangy",
+        "est_premium": False,
+    },
+    {
+        "cle": "kofiaf",
+        "gare_code": "vatofotsy",
+        "nom": "KOFIAF",
+        "telephone": "032 04 567 89",
+        "secretaire": "Rafanomezantsoa Lalao",
+        "est_premium": False,
+    },
+]
+
 TARIFS = {
     "Antananarivo": 30000,
     "Fianarantsoa": 30000,
     "Mandoto": 10000,
     "Ankazomiritra": 10000,
+    "Majunga": 40000,
 }
 
 PROGRAMME = {
@@ -68,6 +105,8 @@ PROGRAMME = {
             "matricule": "1234 TBA",
             "destination": "Betafo",
             "chauffeur": "Rakoto Jean",
+            "chauffeur_telephone": "034 11 234 56",
+            "cooperative": "fifimava",
             "capacite": 18,
             "heure": time(7, 30),
             "prix": 3000,
@@ -79,6 +118,8 @@ PROGRAMME = {
             "matricule": "2468 TBB",
             "destination": "Betafo",
             "chauffeur": "Randriamalala Soa",
+            "chauffeur_telephone": "033 22 345 67",
+            "cooperative": "fifimava",
             "capacite": 18,
             "heure": time(12, 30),
             "prix": 3000,
@@ -89,6 +130,8 @@ PROGRAMME = {
             "matricule": "5678 TBC",
             "destination": "Mandoto",
             "chauffeur": "Rabe Michel",
+            "chauffeur_telephone": "032 33 456 78",
+            "cooperative": "fifimava",
             "capacite": 22,
             "heure": time(8, 0),
             "prix": 10000,
@@ -99,6 +142,8 @@ PROGRAMME = {
             "matricule": "1357 TBD",
             "destination": "Mandoto",
             "chauffeur": "Ratsimba Alain",
+            "chauffeur_telephone": "034 44 567 89",
+            "cooperative": "fifimava",
             "capacite": 22,
             "heure": time(14, 0),
             "prix": 10000,
@@ -109,6 +154,8 @@ PROGRAMME = {
             "matricule": "9012 TBE",
             "destination": "Ankazomiritra",
             "chauffeur": "Rakoto Paul",
+            "chauffeur_telephone": "033 55 678 90",
+            "cooperative": "fifimava",
             "capacite": 15,
             "heure": time(9, 0),
             "prix": 10000,
@@ -119,6 +166,8 @@ PROGRAMME = {
             "matricule": "7531 TBF",
             "destination": "Ankazomiritra",
             "chauffeur": "Andriamana Hery",
+            "chauffeur_telephone": "032 66 789 01",
+            "cooperative": "fifimava",
             "capacite": 15,
             "heure": time(15, 30),
             "prix": 10000,
@@ -131,6 +180,8 @@ PROGRAMME = {
             "matricule": "4321 TCA",
             "destination": "Antananarivo",
             "chauffeur": "Razafy Marcel",
+            "chauffeur_telephone": "034 77 890 12",
+            "cooperative": "kofiam",
             "capacite": 30,
             "heure": time(6, 30),
             "prix": 30000,
@@ -142,6 +193,8 @@ PROGRAMME = {
             "matricule": "8765 TCB",
             "destination": "Antananarivo",
             "chauffeur": "Rakotondrabe Luc",
+            "chauffeur_telephone": "033 88 901 23",
+            "cooperative": "kofiam",
             "capacite": 30,
             "heure": time(9, 30),
             "prix": 30000,
@@ -152,6 +205,8 @@ PROGRAMME = {
             "matricule": "2469 TCC",
             "destination": "Fianarantsoa",
             "chauffeur": "Raveloarison Eric",
+            "chauffeur_telephone": "032 99 012 34",
+            "cooperative": "kotrafia",
             "capacite": 22,
             "heure": time(7, 0),
             "prix": 30000,
@@ -162,6 +217,8 @@ PROGRAMME = {
             "matricule": "8642 TCD",
             "destination": "Fianarantsoa",
             "chauffeur": "Rasolofo Fanja",
+            "chauffeur_telephone": "034 10 123 45",
+            "cooperative": "kotrafia",
             "capacite": 22,
             "heure": time(13, 0),
             "prix": 30000,
@@ -172,6 +229,8 @@ PROGRAMME = {
             "matricule": "5555 TCE",
             "destination": "Ambositra",
             "chauffeur": "Ramarozatovo Naina",
+            "chauffeur_telephone": "033 21 234 56",
+            "cooperative": "kofiaf",
             "capacite": 20,
             "heure": time(8, 30),
             "prix": 12000,
@@ -182,11 +241,37 @@ PROGRAMME = {
             "matricule": "7777 TCF",
             "destination": "Ambositra",
             "chauffeur": "Rakotobe Solo",
+            "chauffeur_telephone": "032 32 345 67",
+            "cooperative": "kofiaf",
             "capacite": 20,
             "heure": time(14, 30),
             "prix": 12000,
             "duree": 150,
             "remplissage_demo": 8,
+        },
+        {
+            "matricule": "9081 TCG",
+            "destination": "Majunga",
+            "chauffeur": "Rakotomalala Tojo",
+            "chauffeur_telephone": "034 43 456 78",
+            "cooperative": "kotrafia",
+            "capacite": 28,
+            "heure": time(10, 0),
+            "prix": 40000,
+            "duree": 360,
+            "remplissage_demo": 21,
+        },
+        {
+            "matricule": "1836 TCH",
+            "destination": "Majunga",
+            "chauffeur": "Randriamihaja Fidy",
+            "chauffeur_telephone": "033 54 567 89",
+            "cooperative": "kofiaf",
+            "capacite": 28,
+            "heure": time(16, 0),
+            "prix": 40000,
+            "duree": 360,
+            "remplissage_demo": 12,
         },
     ],
 }
@@ -238,6 +323,43 @@ def _seed_responsables(session: Session, gares: dict[str, Gare]) -> None:
     session.commit()
 
 
+def _seed_cooperatives(
+    session: Session, gares: dict[str, Gare]
+) -> dict[str, Cooperative]:
+    resultat: dict[str, Cooperative] = {}
+    for donnees in COOPERATIVES:
+        gare = gares[donnees["gare_code"]]
+        cooperative = session.exec(
+            select(Cooperative).where(
+                Cooperative.gare_id == gare.id,
+                Cooperative.nom == donnees["nom"],
+            )
+        ).first()
+        if cooperative is None:
+            cooperative = Cooperative(
+                gare_id=gare.id,
+                nom=donnees["nom"],
+                telephone=donnees["telephone"],
+                secretaire=donnees["secretaire"],
+                est_premium=donnees["est_premium"],
+            )
+            session.add(cooperative)
+            session.commit()
+            session.refresh(cooperative)
+        else:
+            changements = False
+            for champ in ("telephone", "secretaire", "est_premium"):
+                if getattr(cooperative, champ) != donnees[champ]:
+                    setattr(cooperative, champ, donnees[champ])
+                    changements = True
+            if changements:
+                session.add(cooperative)
+                session.commit()
+                session.refresh(cooperative)
+        resultat[donnees["cle"]] = cooperative
+    return resultat
+
+
 def _maj_tarifs(session: Session) -> None:
     """Applique les tarifs officiels aux véhicules déjà en base."""
     for destination, prix in TARIFS.items():
@@ -247,6 +369,30 @@ def _maj_tarifs(session: Session) -> None:
         for vehicule in vehicules:
             if vehicule.prix != prix:
                 vehicule.prix = prix
+                session.add(vehicule)
+    session.commit()
+
+
+def _maj_vehicules_cooperatives(
+    session: Session,
+    gares: dict[str, Gare],
+    cooperatives: dict[str, Cooperative],
+) -> None:
+    """Rattache les véhicules de démonstration à leur coopérative."""
+    for code_gare, courses in PROGRAMME.items():
+        gare = gares[code_gare]
+        for course in courses:
+            cooperative = cooperatives[course["cooperative"]]
+            vehicules = session.exec(
+                select(Vehicule).where(
+                    Vehicule.gare_id == gare.id,
+                    Vehicule.matricule == course["matricule"],
+                )
+            ).all()
+            for vehicule in vehicules:
+                vehicule.cooperative_id = cooperative.id
+                vehicule.chauffeur = course["chauffeur"]
+                vehicule.chauffeur_telephone = course["chauffeur_telephone"]
                 session.add(vehicule)
     session.commit()
 
@@ -289,28 +435,26 @@ def _creer_reservations_demo(
     session.add(vehicule)
 
 
-def seed_database(session: Session) -> None:
-    """Crée les données de démonstration si la base est encore vide."""
-    gares = _seed_gares(session)
-    _seed_responsables(session, gares)
-    _maj_tarifs(session)
-
-    vehicule_existant = session.exec(select(Vehicule)).first()
-    if vehicule_existant:
-        return
-
-    aujourd_hui = date.today()
+def _creer_programme(
+    session: Session,
+    gares: dict[str, Gare],
+    cooperatives: dict[str, Cooperative],
+    aujourd_hui: date,
+) -> None:
     for decalage in range(4):
         jour = aujourd_hui + timedelta(days=decalage)
         for code_gare, courses in PROGRAMME.items():
             gare = gares[code_gare]
             for course in courses:
+                cooperative = cooperatives[course["cooperative"]]
                 parti = decalage == 0 and course.get("parti", False)
                 vehicule = Vehicule(
                     gare_id=gare.id,
+                    cooperative_id=cooperative.id,
                     matricule=course["matricule"],
                     destination=course["destination"],
                     chauffeur=course["chauffeur"],
+                    chauffeur_telephone=course["chauffeur_telephone"],
                     capacite=course["capacite"],
                     statut=VEHICULE_PARTI if parti else VEHICULE_EN_ATTENTE,
                     date_depart=jour,
@@ -333,3 +477,20 @@ def seed_database(session: Session) -> None:
                     session.add(vehicule)
 
     session.commit()
+
+
+def seed_database(session: Session) -> None:
+    """Crée et met à jour les données de démonstration."""
+    gares = _seed_gares(session)
+    _seed_responsables(session, gares)
+    cooperatives = _seed_cooperatives(session, gares)
+    _maj_tarifs(session)
+
+    aujourd_hui = date.today()
+    programme_du_jour = session.exec(
+        select(Vehicule).where(Vehicule.date_depart == aujourd_hui)
+    ).first()
+    if programme_du_jour is None:
+        _creer_programme(session, gares, cooperatives, aujourd_hui)
+
+    _maj_vehicules_cooperatives(session, gares, cooperatives)

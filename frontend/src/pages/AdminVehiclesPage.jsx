@@ -6,6 +6,7 @@ import {
   Clock,
   MapPin,
   Pencil,
+  Phone,
   Plus,
   RefreshCw,
   Search,
@@ -422,7 +423,15 @@ export default function AdminVehiclesPage() {
     return vehicules.filter((vehicule) => {
       const correspondTexte =
         !terme ||
-        [vehicule.matricule, vehicule.destination, vehicule.chauffeur]
+        [
+          vehicule.matricule,
+          vehicule.destination,
+          vehicule.chauffeur,
+          vehicule.chauffeur_telephone,
+          vehicule.cooperative?.nom,
+          vehicule.cooperative?.telephone,
+        ]
+          .filter(Boolean)
           .join(' ')
           .toLowerCase()
           .includes(terme)
@@ -507,7 +516,7 @@ export default function AdminVehiclesPage() {
           <input
             type="search"
             className="input border-0 py-2.5 pl-11 shadow-none focus:ring-0"
-            placeholder="Rechercher une destination, un chauffeur, un matricule…"
+            placeholder="Rechercher une destination, un chauffeur, une coopérative…"
             value={recherche}
             onChange={(event) => setRecherche(event.target.value)}
             aria-label="Rechercher un véhicule"
@@ -551,9 +560,9 @@ export default function AdminVehiclesPage() {
       <div className="mt-5 overflow-hidden rounded-2xl border border-slate-200 bg-white shadow-soft">
         <div className="hidden grid-cols-12 gap-3 border-b border-slate-100 bg-slate-50 px-5 py-3 text-[9px] font-extrabold uppercase tracking-[0.14em] text-slate-400 md:grid">
           <div className="col-span-2">Départ</div>
-          <div className="col-span-3">Destination</div>
-          <div className="col-span-2">Chauffeur</div>
-          <div className="col-span-1">Places</div>
+          <div className="col-span-2">Destination</div>
+          <div className="col-span-2">Coopérative</div>
+          <div className="col-span-2">Chauffeur / contact</div>
           <div className="col-span-2">Statut</div>
           <div className="col-span-2 text-right">Actions</div>
         </div>
@@ -592,23 +601,47 @@ export default function AdminVehiclesPage() {
                   </p>
                 </div>
 
-                <div className="md:col-span-3">
+                <div className="md:col-span-2">
                   <p className="font-display text-sm font-bold text-primary-900">
                     {vehicule.destination}
                   </p>
                   <p className="mt-0.5 font-mono text-[10px] font-semibold text-slate-400">
                     {vehicule.matricule}
                   </p>
+                  <p className="mt-1 inline-flex items-center gap-1.5 text-[10px] font-semibold text-slate-500">
+                    <Users className="h-3 w-3 text-slate-400" />
+                    {vehicule.capacite} places
+                  </p>
                 </div>
 
                 <div className="md:col-span-2">
-                  <p className="text-sm font-semibold text-slate-600">{vehicule.chauffeur}</p>
+                  <p className="text-sm font-bold text-primary-900">
+                    {vehicule.cooperative?.nom || '—'}
+                  </p>
+                  {vehicule.cooperative?.telephone && (
+                    <a
+                      href={`tel:${vehicule.cooperative.telephone.replace(/[^0-9+]/g, '')}`}
+                      className="mt-1 inline-flex items-center gap-1.5 text-[10px] font-bold text-primary-600 transition hover:text-accent-500"
+                    >
+                      <Phone className="h-3 w-3" />
+                      {vehicule.cooperative.telephone}
+                    </a>
+                  )}
                 </div>
 
-                <div className="flex items-center gap-1.5 text-xs font-semibold text-slate-500 md:col-span-1">
-                  <Users className="h-3.5 w-3.5 text-slate-400 md:hidden" />
-                  {vehicule.capacite}
-                  <span className="md:hidden">places</span>
+                <div className="md:col-span-2">
+                  <p className="text-sm font-semibold text-slate-600">
+                    {vehicule.chauffeur}
+                  </p>
+                  {vehicule.chauffeur_telephone && (
+                    <a
+                      href={`tel:${vehicule.chauffeur_telephone.replace(/[^0-9+]/g, '')}`}
+                      className="mt-1 inline-flex items-center gap-1.5 text-[10px] font-bold text-primary-600 transition hover:text-accent-500"
+                    >
+                      <Phone className="h-3 w-3" />
+                      {vehicule.chauffeur_telephone}
+                    </a>
+                  )}
                 </div>
 
                 <div className="md:col-span-2">

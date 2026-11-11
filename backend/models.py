@@ -51,14 +51,29 @@ class Responsable(SQLModel, table=True):
     mot_de_passe_hash: str
 
 
+class Cooperative(SQLModel, table=True):
+    __tablename__ = "cooperatives"
+
+    id: Optional[int] = Field(default=None, primary_key=True)
+    gare_id: int = Field(foreign_key="gares.id", index=True)
+    nom: str = Field(index=True, max_length=120)
+    telephone: str = Field(max_length=40)
+    secretaire: str = Field(default="", max_length=120)
+    est_premium: bool = Field(default=False)
+
+
 class Vehicule(SQLModel, table=True):
     __tablename__ = "vehicules"
 
     id: Optional[int] = Field(default=None, primary_key=True)
     gare_id: int = Field(foreign_key="gares.id", index=True)
+    cooperative_id: Optional[int] = Field(
+        default=None, foreign_key="cooperatives.id", index=True
+    )
     matricule: str = Field(index=True, max_length=40)
     destination: str = Field(index=True, max_length=120)
     chauffeur: str = Field(max_length=120)
+    chauffeur_telephone: str = Field(default="", max_length=40)
     capacite: int = Field(default=18)
     statut: str = Field(default=VEHICULE_EN_ATTENTE, index=True)
     date_depart: date = Field(index=True)

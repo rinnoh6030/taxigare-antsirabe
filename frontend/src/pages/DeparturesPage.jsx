@@ -3,12 +3,14 @@ import {
   ArrowRight,
   Clock,
   MapPin,
+  Phone,
   Radio,
   RefreshCw,
   Users,
 } from 'lucide-react'
 import { Link } from 'react-router-dom'
 import { api } from '../api/client'
+import CooperativeHeader from '../components/CooperativeHeader'
 import EmptyState from '../components/EmptyState'
 import OccupancyBar from '../components/OccupancyBar'
 import StatusBadge from '../components/StatusBadge'
@@ -17,6 +19,7 @@ import {
   dateDuJour,
   formatDateJour,
   getErrorMessage,
+  grouperVehiculesParCooperative,
   nomGare,
 } from '../utils/format'
 
@@ -87,6 +90,10 @@ export default function DeparturesPage() {
   const gare = gares.find((item) => String(item.id) === String(gareId))
   const enAttente = useMemo(
     () => departs.filter((depart) => depart.statut === 'en_attente').length,
+    [departs],
+  )
+  const groupes = useMemo(
+    () => grouperVehiculesParCooperative(departs),
     [departs],
   )
 
@@ -197,7 +204,7 @@ export default function DeparturesPage() {
           <div className="hidden grid-cols-12 gap-4 border-b border-slate-100 bg-slate-50/80 px-5 py-3 text-[9px] font-extrabold uppercase tracking-[0.16em] text-slate-400 md:grid">
             <div className="col-span-2">Départ</div>
             <div className="col-span-3">Destination</div>
-            <div className="col-span-2">Chauffeur</div>
+            <div className="col-span-2">Chauffeur / contact</div>
             <div className="col-span-3">Remplissage</div>
             <div className="col-span-2 text-right">Statut</div>
           </div>
@@ -224,73 +231,100 @@ export default function DeparturesPage() {
               />
             </div>
           ) : (
-            <div className="divide-y divide-slate-100">
-              {departs.map((depart) => {
-                const inactif = depart.statut !== 'en_attente'
-                return (
-                  <div
-                    key={depart.id}
-                    className={`grid grid-cols-1 gap-4 px-5 py-4 transition hover:bg-slate-50/70 md:grid-cols-12 md:items-center ${
-                      inactif ? 'opacity-65' : ''
-                    }`}
-                  >
-                    <div className="flex items-center justify-between md:col-span-2 md:block">
-                      <p className="font-display text-lg font-extrabold text-primary-900">
-                        {depart.heure_depart}
-                      </p>
-                      <p className="text-[10px] font-semibold text-slate-400 md:mt-0.5">
-                        estimé {depart.creneau.split(' - ')[1]}
-                      </p>
-                    </div>
-
-                    <div className="md:col-span-3">
-                      <div className="flex items-center gap-2 md:block">
-                        <p className="font-display text-base font-bold text-primary-900">
-                          {depart.destination}
-                        </p>
-                        <p className="rounded bg-slate-100 px-1.5 py-0.5 text-[9px] font-bold uppercase tracking-wider text-slate-500 md:mt-1 md:inline-block">
-                          {nomGare(depart.gare?.nom)}
-                        </p>
-                      </div>
-                      <p className="mt-1 text-[10px] font-semibold text-slate-400">
-                        {depart.matricule}
-                      </p>
-                    </div>
-
-                    <div className="md:col-span-2">
-                      <p className="text-sm font-semibold text-slate-600">
-                        {depart.chauffeur}
-                      </p>
-                    </div>
-
-                    <div className="md:col-span-3">
-                      <div className="mb-1.5 flex items-center justify-between gap-2 text-[10px] font-bold text-slate-400">
-                        <span className="inline-flex items-center gap-1.5">
-                          <Users className="h-3 w-3" />
-                          {depart.occupation}/{depart.capacite} passagers
-                        </span>
-                        <span>{depart.taux_remplissage} %</span>
-                      </div>
-                      <OccupancyBar
-                        valeur={depart.taux_remplissage}
-                        seuil={depart.seuil_remplissage}
-                      />
-                    </div>
-
-                    <div className="flex items-center justify-between gap-3 md:col-span-2 md:justify-end">
-                      <StatusBadge statut={depart.statut} />
-                      {depart.statut === 'annule' && depart.cancellation_reason && (
-                        <span
-                          className="max-w-28 truncate text-[9px] text-slate-400"
-                          title={depart.cancellation_reason}
-                        >
-                          {depart.cancellation_reason}
-                        </span>
-                      )}
-                    </div>
+            <div className="space-y-4 bg-slate-50/40 p-3 sm:p-4">
+              {groupes.map((groupe) => (
+                <div
+                  key={groupe.cooperative?.id ?? 'sans-cooperative'}
+                  className="overflow-hidden rounded-xl border border-slate-200 bg-white"
+                >
+                  <div className="p-3">
+                    <CooperativeHeader
+                      cooperative={groupe.cooperative}
+                      nombre={groupe.vehicules.length}
+                    />
                   </div>
-                )
-              })}
+
+                  <div className="divide-y divide-slate-100 border-t border-slate-100">
+                    {groupe.vehicules.map((depart) => {
+                      const inactif = depart.statut !== 'en_attente'
+                      const telephone = depart.chauffeur_telephone
+                      return (
+                        <div
+                          key={depart.id}
+                          className={`grid grid-cols-1 gap-4 px-5 py-4 transition hover:bg-slate-50/70 md:grid-cols-12 md:items-center ${
+                            inactif ? 'opacity-65' : ''
+                          }`}
+                        >
+                          <div className="flex items-center justify-between md:col-span-2 md:block">
+                            <p className="font-display text-lg font-extrabold text-primary-900">
+                              {depart.heure_depart}
+                            </p>
+                            <p className="text-[10px] font-semibold text-slate-400 md:mt-0.5">
+                              estimé {depart.creneau.split(' - ')[1]}
+                            </p>
+                          </div>
+
+                          <div className="md:col-span-3">
+                            <div className="flex items-center gap-2 md:block">
+                              <p className="font-display text-base font-bold text-primary-900">
+                                {depart.destination}
+                              </p>
+                              <p className="rounded bg-slate-100 px-1.5 py-0.5 text-[9px] font-bold uppercase tracking-wider text-slate-500 md:mt-1 md:inline-block">
+                                {nomGare(depart.gare?.nom)}
+                              </p>
+                            </div>
+                            <p className="mt-1 text-[10px] font-semibold text-slate-400">
+                              {depart.matricule}
+                            </p>
+                          </div>
+
+                          <div className="md:col-span-2">
+                            <p className="text-sm font-semibold text-slate-600">
+                              {depart.chauffeur}
+                            </p>
+                            {telephone && (
+                              <a
+                                href={`tel:${telephone.replace(/[^0-9+]/g, '')}`}
+                                className="mt-1 inline-flex items-center gap-1.5 text-[10px] font-bold text-primary-600 transition hover:text-accent-500"
+                              >
+                                <Phone className="h-3 w-3" />
+                                {telephone}
+                              </a>
+                            )}
+                          </div>
+
+                          <div className="md:col-span-3">
+                            <div className="mb-1.5 flex items-center justify-between gap-2 text-[10px] font-bold text-slate-400">
+                              <span className="inline-flex items-center gap-1.5">
+                                <Users className="h-3 w-3" />
+                                {depart.occupation}/{depart.capacite} passagers
+                              </span>
+                              <span>{depart.taux_remplissage} %</span>
+                            </div>
+                            <OccupancyBar
+                              valeur={depart.taux_remplissage}
+                              seuil={depart.seuil_remplissage}
+                            />
+                          </div>
+
+                          <div className="flex items-center justify-between gap-3 md:col-span-2 md:justify-end">
+                            <StatusBadge statut={depart.statut} />
+                            {depart.statut === 'annule' &&
+                              depart.cancellation_reason && (
+                                <span
+                                  className="max-w-28 truncate text-[9px] text-slate-400"
+                                  title={depart.cancellation_reason}
+                                >
+                                  {depart.cancellation_reason}
+                                </span>
+                              )}
+                          </div>
+                        </div>
+                      )
+                    })}
+                  </div>
+                </div>
+              ))}
             </div>
           )}
         </div>

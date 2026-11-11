@@ -9,6 +9,7 @@ from models import (
     RESERVATION_ANNULE,
     RESERVATION_RESERVE,
     VEHICULE_EN_ATTENTE,
+    Cooperative,
     Gare,
     Reservation,
     Vehicule,
@@ -39,6 +40,17 @@ def serialize_gare(gare: Gare) -> dict:
     }
 
 
+def serialize_cooperative(cooperative: Cooperative) -> dict:
+    return {
+        "id": cooperative.id,
+        "gare_id": cooperative.gare_id,
+        "nom": cooperative.nom,
+        "telephone": cooperative.telephone,
+        "secretaire": cooperative.secretaire,
+        "est_premium": cooperative.est_premium,
+    }
+
+
 def places_reservees(session: Session, vehicule_id: int) -> int:
     total = session.exec(
         select(func.coalesce(func.sum(Reservation.nombre_places), 0)).where(
@@ -63,6 +75,11 @@ def serialize_vehicule(
     session: Session, vehicule: Vehicule, gare: Gare | None = None
 ) -> dict:
     gare = gare or session.get(Gare, vehicule.gare_id)
+    cooperative = (
+        session.get(Cooperative, vehicule.cooperative_id)
+        if vehicule.cooperative_id
+        else None
+    )
     reservees = places_reservees(session, vehicule.id)
     embarquees = places_embarquees(session, vehicule.id)
     capacite = max(vehicule.capacite, 1)
@@ -80,9 +97,12 @@ def serialize_vehicule(
         "id": vehicule.id,
         "gare_id": vehicule.gare_id,
         "gare": serialize_gare(gare) if gare else None,
+        "cooperative_id": vehicule.cooperative_id,
+        "cooperative": serialize_cooperative(cooperative) if cooperative else None,
         "matricule": vehicule.matricule,
         "destination": vehicule.destination,
         "chauffeur": vehicule.chauffeur,
+        "chauffeur_telephone": vehicule.chauffeur_telephone,
         "capacite": vehicule.capacite,
         "statut": vehicule.statut,
         "date_depart": vehicule.date_depart.isoformat(),
@@ -112,6 +132,11 @@ def limite_annulation(vehicule: Vehicule) -> datetime:
 def serialize_reservation(session: Session, reservation: Reservation) -> dict:
     vehicule = session.get(Vehicule, reservation.vehicule_id)
     gare = session.get(Gare, vehicule.gare_id) if vehicule else None
+    cooperative = (
+        session.get(Cooperative, vehicule.cooperative_id)
+        if vehicule and vehicule.cooperative_id
+        else None
+    )
     limite = limite_annulation(vehicule) if vehicule else None
     annulable = bool(
         vehicule
@@ -150,6 +175,12 @@ def serialize_reservation(session: Session, reservation: Reservation) -> dict:
                 "matricule": vehicule.matricule,
                 "destination": vehicule.destination,
                 "chauffeur": vehicule.chauffeur,
+                "chauffeur_telephone": vehicule.chauffeur_telephone,
+                "cooperative": (
+                    serialize_cooperative(cooperative)
+                    if cooperative
+                    else None
+                ),
                 "date_depart": vehicule.date_depart.isoformat(),
                 "heure_depart": format_heure(vehicule.heure_depart),
                 "creneau": format_creneau(vehicule.heure_depart),

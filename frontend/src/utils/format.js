@@ -106,3 +106,20 @@ export function pluraliser(mot, nombre) {
 export function clamp(value, min, max) {
   return Math.min(Math.max(value, min), max)
 }
+
+export function grouperVehiculesParCooperative(vehicules) {
+  const groupes = new Map()
+  vehicules.forEach((vehicule) => {
+    const cooperative = vehicule.cooperative || null
+    const cle = cooperative?.id ?? 'sans-cooperative'
+    if (!groupes.has(cle)) {
+      groupes.set(cle, { cooperative, vehicules: [] })
+    }
+    groupes.get(cle).vehicules.push(vehicule)
+  })
+  return Array.from(groupes.values()).sort((a, b) => {
+    if (!a.cooperative) return 1
+    if (!b.cooperative) return -1
+    return a.cooperative.nom.localeCompare(b.cooperative.nom, 'fr')
+  })
+}

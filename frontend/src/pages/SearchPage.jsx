@@ -1,15 +1,17 @@
-import { useEffect, useState } from 'react'
+import { useEffect, useMemo, useState } from 'react'
 import {
   ArrowLeft,
   ArrowRight,
   Calendar,
   Clock,
   MapPin,
+  Phone,
   Route,
   Users,
 } from 'lucide-react'
 import { Link, useNavigate, useSearchParams } from 'react-router-dom'
 import { api } from '../api/client'
+import CooperativeHeader from '../components/CooperativeHeader'
 import EmptyState from '../components/EmptyState'
 import OccupancyBar from '../components/OccupancyBar'
 import SearchForm from '../components/SearchForm'
@@ -20,6 +22,7 @@ import {
   formatDuration,
   formatPrice,
   getErrorMessage,
+  grouperVehiculesParCooperative,
   nomGare,
 } from '../utils/format'
 
@@ -66,7 +69,18 @@ function CarteResultat({ vehicule, index }) {
               <Route className="h-3.5 w-3.5 text-slate-400" />
               {vehicule.matricule}
             </span>
-            <span>{vehicule.chauffeur}</span>
+            <span className="inline-flex flex-wrap items-center gap-1.5">
+              <span>{vehicule.chauffeur}</span>
+              {vehicule.chauffeur_telephone && (
+                <a
+                  href={`tel:${vehicule.chauffeur_telephone.replace(/[^0-9+]/g, '')}`}
+                  className="inline-flex items-center gap-1 text-primary-600 transition hover:text-accent-500"
+                >
+                  <Phone className="h-3 w-3" />
+                  {vehicule.chauffeur_telephone}
+                </a>
+              )}
+            </span>
             <span className="inline-flex items-center gap-1.5">
               <Users className="h-3.5 w-3.5 text-slate-400" />
               {vehicule.places_restantes} place
@@ -170,6 +184,11 @@ export default function SearchPage() {
     navigate(`/recherche?${params.toString()}`)
   }
 
+  const groupes = useMemo(
+    () => grouperVehiculesParCooperative(vehicules),
+    [vehicules],
+  )
+
   const titre = destination
     ? `Départs vers ${destination}`
     : 'Tous les départs disponibles'
@@ -231,7 +250,7 @@ export default function SearchPage() {
           </div>
         )}
 
-        <div className="mt-7 space-y-4">
+        <div className="mt-7 space-y-7">
           {chargement &&
             [0, 1, 2].map((item) => (
               <div
@@ -266,12 +285,23 @@ export default function SearchPage() {
 
           {!chargement &&
             !erreur &&
-            vehicules.map((vehicule, index) => (
-              <CarteResultat
-                key={vehicule.id}
-                vehicule={vehicule}
-                index={index}
-              />
+            groupes.map((groupe) => (
+              <section
+                key={groupe.cooperative?.id ?? 'sans-cooperative'}
+                className="space-y-4"
+              >
+                <CooperativeHeader
+                  cooperative={groupe.cooperative}
+                  nombre={groupe.vehicules.length}
+                />
+                {groupe.vehicules.map((vehicule, index) => (
+                  <CarteResultat
+                    key={vehicule.id}
+                    vehicule={vehicule}
+                    index={index}
+                  />
+                ))}
+              </section>
             ))}
         </div>
 

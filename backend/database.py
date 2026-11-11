@@ -19,25 +19,42 @@ COLONNES_RESERVATIONS = {
     "annule_le": "DATETIME",
 }
 
+COLONNES_VEHICULES = {
+    "cooperative_id": "INTEGER",
+    "chauffeur_telephone": "VARCHAR(40) NOT NULL DEFAULT ''",
+}
+
+
+def _ajouter_colonnes(
+    connexion,
+    inspecteur,
+    table: str,
+    colonnes: dict[str, str],
+) -> None:
+    if table not in inspecteur.get_table_names():
+        return
+    existantes = {
+        colonne["name"] for colonne in inspecteur.get_columns(table)
+    }
+    for nom, definition in colonnes.items():
+        if nom not in existantes:
+            connexion.execute(
+                text(f"ALTER TABLE {table} ADD COLUMN {nom} {definition}")
+            )
+
 
 def _migrer_schema() -> None:
     """Ajoute les nouvelles colonnes aux bases SQLite existantes."""
     with engine.begin() as connexion:
         inspecteur = inspect(connexion)
+        _ajouter_colonnes(connexion, inspecteur, "vehicules", COLONNES_VEHICULES)
+
         if "reservations" not in inspecteur.get_table_names():
             return
 
-        existantes = {
-            colonne["name"]
-            for colonne in inspecteur.get_columns("reservations")
-        }
-        for nom, definition in COLONNES_RESERVATIONS.items():
-            if nom not in existantes:
-                connexion.execute(
-                    text(
-                        f"ALTER TABLE reservations ADD COLUMN {nom} {definition}"
-                    )
-                )
+        _ajouter_colonnes(
+            connexion, inspecteur, "reservations", COLONNES_RESERVATIONS
+        )
 
         connexion.execute(
             text(
