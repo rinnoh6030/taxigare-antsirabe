@@ -6,11 +6,14 @@ from sqlmodel import Session, select
 
 from database import get_session
 from models import (
+    PAIEMENT_PAYE,
+    PAIEMENT_REMBOURSE,
     Gare,
     Reservation,
     Responsable,
     Vehicule,
     RESERVATION_ANNULE,
+    RESERVATION_EMBARQUE,
     VEHICULE_ANNULE,
     VEHICULE_EN_ATTENTE,
     VEHICULE_PARTI,
@@ -178,16 +181,82 @@ def reservations_du_vehicule(
     _vehicule_de_la_gare(session, vehicule_id, responsable)
     reservations = session.exec(
         select(Reservation)
-        .where(
-            Reservation.vehicule_id == vehicule_id,
-            Reservation.statut != RESERVATION_ANNULE,
-        )
+        .where(Reservation.vehicule_id == vehicule_id)
         .order_by(Reservation.created_at)
     ).all()
     return [
         serialize_reservation(session, reservation)
         for reservation in reservations
     ]
+
+
+def _reservation_de_la_gare(
+    session: Session,
+    reservation_id: int,
+    responsable: Responsable,
+) -> tuple[Reservation, Vehicule]:
+    reservation = session.get(Reservation, reservation_id)
+    if reservation is None:
+        raise HTTPException(status_code=404, detail="Réservation introuvable.")
+    vehicule = _vehicule_de_la_gare(
+        session, reservation.vehicule_id, responsable
+    )
+    return reservation, vehicule
+
+
+@router.post("/reservations/{reservation_id}/annuler")
+def annuler_reservation(
+    reservation_id: int,
+    donnees: AnnulationRequest,
+    responsable: Responsable = Depends(get_current_responsable),
+    session: Session = Depends(get_session),
+) -> dict:
+    reservation, vehicule = _reservation_de_la_gare(
+        session, reservation_id, responsable
+    )
+    if reservation.statut == RESERVATION_ANNULE:
+        raise HTTPException(
+            status_code=status.HTTP_409_CONFLICT,
+            detail="Cette réservation est déjà annulée.",
+        )
+    if reservation.statut == RESERVATION_EMBARQUE:
+        raise HTTPException(
+            status_code=status.HTTP_409_CONFLICT,
+            detail="Impossible d'annuler un billet déjà utilisé.",
+        )
+    if vehicule.statut == VEHICULE_PARTI:
+        raise HTTPException(
+            status_code=status.HTTP_409_CONFLICT,
+            detail="Le départ a déjà été effectué.",
+        )
+    if vehicule.statut == VEHICULE_ANNULE:
+        raise HTTPException(
+            status_code=status.HTTP_409_CONFLICT,
+            detail="Le départ associé est déjà annulé.",
+        )
+
+    motif = (
+        donnees.motif.strip()
+        if donnees.motif and donnees.motif.strip()
+        else "Annulation demandée par le passager"
+    )
+    rembourse = reservation.payment_status == PAIEMENT_PAYE
+    reservation.statut = RESERVATION_ANNULE
+    reservation.annule_le = utcnow()
+    reservation.motif_annulation = motif
+    if rembourse:
+        reservation.payment_status = PAIEMENT_REMBOURSE
+    session.add(reservation)
+    session.commit()
+    session.refresh(reservation)
+
+    return {
+        "message": (
+            "Réservation annulée. La ou les places sont de nouveau disponibles."
+            + (" Le paiement sera remboursé." if rembourse else "")
+        ),
+        "reservation": serialize_reservation(session, reservation),
+    }
 
 
 @router.post("/vehicules", status_code=status.HTTP_201_CREATED)
@@ -392,10 +461,11 @@ def annuler_depart(
     if vehicule.statut == VEHICULE_ANNULE:
         raise HTTPException(status_code=409, detail="Départ déjà annulé.")
 
-    vehicule.statut = VEHICULE_ANNULE
-    vehicule.cancellation_reason = (
+    motif = (
         donnees.motif.strip() if donnees.motif else "Départ annulé par la gare"
     )
+    vehicule.statut = VEHICULE_ANNULE
+    vehicule.cancellation_reason = motif
     reservations = session.exec(
         select(Reservation).where(
             Reservation.vehicule_id == vehicule.id,
@@ -404,6 +474,10 @@ def annuler_depart(
     ).all()
     for reservation in reservations:
         reservation.statut = RESERVATION_ANNULE
+        reservation.annule_le = utcnow()
+        reservation.motif_annulation = motif
+        if reservation.payment_status == PAIEMENT_PAYE:
+            reservation.payment_status = PAIEMENT_REMBOURSE
         session.add(reservation)
 
     session.add(vehicule)

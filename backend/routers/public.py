@@ -13,6 +13,7 @@ from models import (
     PAIEMENT_EN_ATTENTE,
     PAIEMENT_PAYE,
     PAIEMENT_REMBOURSE,
+    Cooperative,
     Gare,
     Reservation,
     Responsable,
@@ -29,6 +30,7 @@ from schemas import PaiementRequest, ReservationCreate, ScanRequest
 from security import get_current_responsable
 from serializers import (
     limite_annulation,
+    serialize_cooperative,
     serialize_gare,
     serialize_reservation,
     serialize_vehicule,
@@ -74,6 +76,46 @@ def lister_gares(session: Session = Depends(get_session)) -> list[dict]:
     return [serialize_gare(gare) for gare in gares]
 
 
+@router.get("/gares/{gare_id}/cooperatives")
+def lister_cooperatives(
+    gare_id: int,
+    session: Session = Depends(get_session),
+) -> list[dict]:
+    gare = session.get(Gare, gare_id)
+    if gare is None:
+        raise HTTPException(status_code=404, detail="Gare introuvable.")
+
+    cooperatives = session.exec(
+        select(Cooperative)
+        .where(Cooperative.gare_id == gare_id)
+        .order_by(Cooperative.nom)
+    ).all()
+    vehicules = session.exec(
+        select(Vehicule).where(Vehicule.gare_id == gare_id)
+    ).all()
+
+    destinations: dict[int, set[str]] = {}
+    departs: dict[int, int] = {}
+    for vehicule in vehicules:
+        if vehicule.cooperative_id is None:
+            continue
+        destinations.setdefault(vehicule.cooperative_id, set()).add(
+            vehicule.destination
+        )
+        departs[vehicule.cooperative_id] = (
+            departs.get(vehicule.cooperative_id, 0) + 1
+        )
+
+    return [
+        {
+            **serialize_cooperative(cooperative),
+            "nombre_departs": departs.get(cooperative.id, 0),
+            "destinations": sorted(destinations.get(cooperative.id, set())),
+        }
+        for cooperative in cooperatives
+    ]
+
+
 @router.get("/gares/{gare_id}/destinations")
 def lister_destinations(
     gare_id: int,
@@ -117,6 +159,7 @@ def rechercher_departs(
     gare_id: int,
     destination: str | None = None,
     date_recherche: date | None = Query(default=None, alias="date"),
+    cooperative_id: int | None = None,
     session: Session = Depends(get_session),
 ) -> list[dict]:
     if session.get(Gare, gare_id) is None:
@@ -126,6 +169,14 @@ def rechercher_departs(
         Vehicule.gare_id == gare_id,
         Vehicule.statut == VEHICULE_EN_ATTENTE,
     )
+    if cooperative_id is not None:
+        cooperative = session.get(Cooperative, cooperative_id)
+        if cooperative is None or cooperative.gare_id != gare_id:
+            raise HTTPException(
+                status_code=404,
+                detail="Coopérative introuvable pour cette gare.",
+            )
+        requete = requete.where(Vehicule.cooperative_id == cooperative_id)
     if destination:
         requete = requete.where(
             func.lower(Vehicule.destination) == destination.strip().lower()
@@ -143,6 +194,7 @@ def rechercher_departs(
 def tableau_departs(
     gare_id: int | None = None,
     date_consultee: date | None = Query(default=None, alias="date"),
+    cooperative_id: int | None = None,
     session: Session = Depends(get_session),
 ) -> list[dict]:
     jour = date_consultee or date.today()
@@ -151,6 +203,8 @@ def tableau_departs(
         if session.get(Gare, gare_id) is None:
             raise HTTPException(status_code=404, detail="Gare introuvable.")
         requete = requete.where(Vehicule.gare_id == gare_id)
+    if cooperative_id is not None:
+        requete = requete.where(Vehicule.cooperative_id == cooperative_id)
 
     vehicules = session.exec(requete).all()
     priorite = {
@@ -298,6 +352,7 @@ def annuler_reservation(
 
     reservation.statut = RESERVATION_ANNULE
     reservation.annule_le = utcnow()
+    reservation.motif_annulation = "Annulation demandée par le passager"
     rembourse = reservation.payment_status == PAIEMENT_PAYE
     if rembourse:
         reservation.payment_status = PAIEMENT_REMBOURSE

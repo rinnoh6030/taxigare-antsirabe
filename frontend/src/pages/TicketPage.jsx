@@ -3,6 +3,7 @@ import {
   AlertTriangle,
   ArrowLeft,
   ArrowRight,
+  Building2,
   Calendar,
   CheckCircle2,
   Clock,
@@ -212,6 +213,12 @@ export default function TicketPage() {
                   <p className="mt-1 text-sm font-semibold text-primary-200">
                     {nomGare(vehicule?.gare?.nom)}
                   </p>
+                  {vehicule?.cooperative && (
+                    <p className="mt-1 inline-flex items-center gap-1.5 text-[11px] font-semibold text-sun-400">
+                      <Building2 className="h-3.5 w-3.5" />
+                      Coopérative {vehicule.cooperative.nom}
+                    </p>
+                  )}
                 </div>
                 <div className="text-right">
                   <StatusBadge statut={reservation.statut} className="bg-white/10 text-white" />

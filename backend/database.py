@@ -17,6 +17,7 @@ COLONNES_RESERVATIONS = {
     "payment_reference": "VARCHAR",
     "paid_at": "DATETIME",
     "annule_le": "DATETIME",
+    "motif_annulation": "VARCHAR(250)",
 }
 
 COLONNES_VEHICULES = {

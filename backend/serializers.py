@@ -144,6 +144,11 @@ def serialize_reservation(session: Session, reservation: Reservation) -> dict:
         and vehicule.statut == VEHICULE_EN_ATTENTE
         and datetime.now() <= limite
     )
+    annulable_par_gare = bool(
+        vehicule
+        and reservation.statut == RESERVATION_RESERVE
+        and vehicule.statut == VEHICULE_EN_ATTENTE
+    )
     paye = reservation.payment_status == PAIEMENT_PAYE
     return {
         "id": reservation.id,
@@ -161,11 +166,13 @@ def serialize_reservation(session: Session, reservation: Reservation) -> dict:
         "payment_reference": reservation.payment_reference,
         "paid_at": _iso(reservation.paid_at),
         "annule_le": _iso(reservation.annule_le),
+        "motif_annulation": reservation.motif_annulation,
         "paiement_requis": not paye,
         "qr_disponible": paye
         and reservation.statut != RESERVATION_ANNULE
         and (vehicule is None or vehicule.statut != "annule"),
         "annulable": annulable,
+        "annulable_par_gare": annulable_par_gare,
         "annulation_limite": _iso(limite),
         "created_at": _iso(reservation.created_at),
         "embarque_le": _iso(reservation.embarque_le),

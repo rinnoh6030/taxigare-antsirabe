@@ -10,12 +10,17 @@ peut plus être réutilisé.
 
 ## Fonctionnalités
 
-- Recherche publique par gare, destination et date.
+- Recherche publique par gare, coopérative, destination et date. Les
+  coopératives de Vatofotsy (KOFIAM, Kotrafia, KOFIAF) sont mises en avant sur
+  l’accueil et filtrables dans les résultats et le tableau des départs.
 - Réservation avec email et téléphone, puis paiement en ligne (MVola, Airtel
   Money, Orange Money, carte bancaire, PayPal, Bitcoin) avant génération du QR.
 - Code unique, QR code et billet PDF disponibles uniquement après paiement.
 - Annulation par le voyageur dans un délai configurable (2 h avant le départ),
   avec remboursement automatique au-delà du paiement.
+- Annulation d’une réservation par le responsable de gare (demande téléphonique
+  du passager, erreur de saisie…) avec libération immédiate des places et
+  remboursement automatique si le billet était payé.
 - Tableau public des départs actualisé toutes les 30 secondes.
 - Seuils différenciés : 70 % pour Asabotsy, 90 % pour Vatofotsy.
 - Détection des départs prêts et possibilité de forcer un départ anticipé.

@@ -1,9 +1,11 @@
 import { useEffect, useMemo, useState } from 'react'
 import {
   ArrowRight,
+  Building2,
   CheckCircle2,
   Clock,
   MapPin,
+  Phone,
   QrCode,
   ScanLine,
   Search,
@@ -47,6 +49,7 @@ export default function HomePage() {
   const navigate = useNavigate()
   const [gares, setGares] = useState([])
   const [destinationsParGare, setDestinationsParGare] = useState({})
+  const [cooperativesParGare, setCooperativesParGare] = useState({})
   const [departs, setDeparts] = useState([])
   const [chargement, setChargement] = useState(true)
   const [erreur, setErreur] = useState('')
@@ -70,6 +73,14 @@ export default function HomePage() {
           ]),
         )
         if (actif) setDestinationsParGare(Object.fromEntries(entrees))
+
+        const cooperatives = await Promise.all(
+          listeGares.map(async (gare) => [
+            gare.id,
+            await api.getCooperatives(gare.id).catch(() => []),
+          ]),
+        )
+        if (actif) setCooperativesParGare(Object.fromEntries(cooperatives))
       } catch {
         if (actif) {
           setErreur('Le tableau des départs est momentanément indisponible.')
@@ -97,12 +108,26 @@ export default function HomePage() {
     return noms.size || 6
   }, [destinationsParGare])
 
+  const garesAvecCooperatives = useMemo(
+    () =>
+      gares
+        .map((gare) => ({
+          ...gare,
+          cooperatives: cooperativesParGare[gare.id] || [],
+        }))
+        .filter((gare) => gare.cooperatives.length > 1),
+    [gares, cooperativesParGare],
+  )
+
   function lancerRecherche(criteres) {
     const params = new URLSearchParams({
       gare: String(criteres.gareId),
       date: criteres.date,
     })
     if (criteres.destination) params.set('destination', criteres.destination)
+    if (criteres.cooperativeId) {
+      params.set('cooperative', criteres.cooperativeId)
+    }
     navigate(`/recherche?${params.toString()}`)
   }
 
@@ -213,8 +238,11 @@ export default function HomePage() {
                             <p className="mt-0.5 flex items-center gap-1.5 text-[11px] text-primary-300">
                               <MapPin className="h-3 w-3 shrink-0" />
                               <span className="truncate">
-                                {nomGare(depart.gare?.nom)} ·{' '}
-                                {depart.places_restantes} place
+                                {nomGare(depart.gare?.nom)}
+                                {depart.cooperative
+                                  ? ` · ${depart.cooperative.nom}`
+                                  : ''}{' '}
+                                · {depart.places_restantes} place
                                 {depart.places_restantes > 1 ? 's' : ''} libre
                                 {depart.places_restantes > 1 ? 's' : ''}
                               </span>
@@ -297,6 +325,7 @@ export default function HomePage() {
           <div className="mt-9 grid gap-5 lg:grid-cols-2">
             {(chargement ? [] : gares).map((gare, index) => {
               const destinations = destinationsParGare[gare.id] || []
+              const cooperatives = cooperativesParGare[gare.id] || []
               const estAsabotsy = gare.code === 'asabotsy'
               return (
                 <article
@@ -360,6 +389,13 @@ export default function HomePage() {
                     ))}
                   </div>
 
+                  {cooperatives.length > 0 && (
+                    <p className="mt-4 flex flex-wrap items-center gap-1.5 text-[11px] font-bold text-slate-400">
+                      <Building2 className="h-3.5 w-3.5 shrink-0" />
+                      {cooperatives.map((cooperative) => cooperative.nom).join(' · ')}
+                    </p>
+                  )}
+
                   <div className="mt-6 flex items-center justify-between border-t border-slate-100 pt-5">
                     <span className="text-xs font-semibold text-slate-400">
                       {formatPrice(
@@ -386,6 +422,111 @@ export default function HomePage() {
           </div>
         </div>
       </section>
+
+      {garesAvecCooperatives.length > 0 && (
+        <section className="border-t border-slate-100 bg-white py-16 lg:py-20">
+          <div className="container-page">
+            <div className="max-w-2xl">
+              <span className="eyebrow">Les coopératives de Vatofotsy</span>
+              <h2 className="section-title mt-4">
+                Choisissez votre coopérative.
+              </h2>
+              <p className="mt-4 text-sm leading-relaxed text-slate-500 sm:text-base">
+                À Vatofotsy, chaque coopérative gère ses propres véhicules et
+                son secrétariat. Sélectionnez celle de votre choix pour voir
+                uniquement ses départs, ou comparez toutes les coopératives.
+              </p>
+            </div>
+
+            {garesAvecCooperatives.map((gare) => (
+              <div key={gare.id} className="mt-9">
+                <div className="flex flex-wrap items-center justify-between gap-3">
+                  <h3 className="font-display text-xl font-bold text-primary-900">
+                    {nomGare(gare.nom)}
+                  </h3>
+                  <Link
+                    to={`/recherche?gare=${gare.id}&date=${dateDuJour()}`}
+                    className="inline-flex items-center gap-2 text-xs font-extrabold text-primary-700 transition hover:text-accent-500"
+                  >
+                    Voir toutes les coopératives
+                    <ArrowRight className="h-3.5 w-3.5" />
+                  </Link>
+                </div>
+
+                <div className="mt-5 grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
+                  {gare.cooperatives.map((cooperative) => (
+                    <article
+                      key={cooperative.id}
+                      className="group flex flex-col overflow-hidden rounded-2xl border border-slate-200/80 bg-white shadow-soft transition hover:-translate-y-1 hover:border-primary-200 hover:shadow-card"
+                    >
+                      <div className="h-1.5 w-full bg-gradient-to-r from-primary-700 via-primary-500 to-sun-500" />
+                      <div className="flex flex-1 flex-col p-5">
+                        <div className="flex items-start justify-between gap-3">
+                          <span className="flex h-11 w-11 shrink-0 items-center justify-center rounded-xl bg-primary-50 text-primary-700">
+                            <Building2 className="h-5 w-5" />
+                          </span>
+                          <span className="rounded-full bg-slate-100 px-2.5 py-1 text-[9px] font-bold uppercase tracking-wider text-slate-500">
+                            {cooperative.nombre_departs} départ
+                            {cooperative.nombre_departs > 1 ? 's' : ''}
+                          </span>
+                        </div>
+
+                        <h4 className="mt-4 font-display text-lg font-extrabold text-primary-900">
+                          Coopérative {cooperative.nom}
+                        </h4>
+                        {cooperative.secretaire && (
+                          <p className="mt-1 text-[11px] font-semibold text-slate-400">
+                            Secrétariat : {cooperative.secretaire}
+                          </p>
+                        )}
+
+                        <div className="mt-3 flex flex-wrap gap-1.5">
+                          {cooperative.destinations.slice(0, 3).map(
+                            (destination) => (
+                              <span
+                                key={destination}
+                                className="rounded-full border border-slate-200 bg-slate-50 px-2.5 py-1 text-[10px] font-semibold text-slate-600"
+                              >
+                                {destination}
+                              </span>
+                            ),
+                          )}
+                          {cooperative.destinations.length > 3 && (
+                            <span className="rounded-full bg-primary-50 px-2.5 py-1 text-[10px] font-bold text-primary-700">
+                              +{cooperative.destinations.length - 3}
+                            </span>
+                          )}
+                        </div>
+
+                        <div className="mt-auto flex items-center justify-between gap-3 border-t border-slate-100 pt-4">
+                          {cooperative.telephone ? (
+                            <a
+                              href={`tel:${cooperative.telephone.replace(/[^0-9+]/g, '')}`}
+                              className="inline-flex items-center gap-1.5 text-[10px] font-bold text-primary-600 transition hover:text-accent-500"
+                            >
+                              <Phone className="h-3 w-3" />
+                              {cooperative.telephone}
+                            </a>
+                          ) : (
+                            <span />
+                          )}
+                          <Link
+                            to={`/recherche?gare=${gare.id}&cooperative=${cooperative.id}&date=${dateDuJour()}`}
+                            className="inline-flex items-center gap-1.5 rounded-lg bg-primary-900 px-3 py-2 text-[10px] font-extrabold text-white transition group-hover:bg-accent-500"
+                          >
+                            Voir les départs
+                            <ArrowRight className="h-3 w-3" />
+                          </Link>
+                        </div>
+                      </div>
+                    </article>
+                  ))}
+                </div>
+              </div>
+            ))}
+          </div>
+        </section>
+      )}
 
       <section id="comment-ca-marche" className="scroll-mt-24 bg-white py-16 lg:py-24">
         <div className="container-page">

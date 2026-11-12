@@ -1,6 +1,7 @@
 import { useEffect, useMemo, useState } from 'react'
 import {
   ArrowRight,
+  Building2,
   Clock,
   MapPin,
   Phone,
@@ -26,6 +27,8 @@ import {
 export default function DeparturesPage() {
   const [gares, setGares] = useState([])
   const [gareId, setGareId] = useState('')
+  const [cooperatives, setCooperatives] = useState([])
+  const [cooperativeId, setCooperativeId] = useState('')
   const [departs, setDeparts] = useState([])
   const [chargement, setChargement] = useState(true)
   const [erreur, setErreur] = useState('')
@@ -54,12 +57,33 @@ export default function DeparturesPage() {
   useEffect(() => {
     if (!gareId) return undefined
     let actif = true
+    api
+      .getCooperatives(gareId)
+      .then((donnees) => {
+        if (!actif) return
+        setCooperatives(donnees)
+        setCooperativeId((courant) =>
+          donnees.some((item) => String(item.id) === courant) ? courant : '',
+        )
+      })
+      .catch(() => {
+        if (actif) setCooperatives([])
+      })
+    return () => {
+      actif = false
+    }
+  }, [gareId])
+
+  useEffect(() => {
+    if (!gareId) return undefined
+    let actif = true
 
     async function charger() {
       try {
         const donnees = await api.getPublicDepartures({
           gareId,
           date: dateDuJour(),
+          cooperativeId,
         })
         if (!actif) return
         setDeparts(donnees)
@@ -85,7 +109,7 @@ export default function DeparturesPage() {
       window.clearInterval(polling)
       window.clearInterval(horloge)
     }
-  }, [gareId, refreshToken])
+  }, [gareId, cooperativeId, refreshToken])
 
   const gare = gares.find((item) => String(item.id) === String(gareId))
   const enAttente = useMemo(
@@ -130,6 +154,14 @@ export default function DeparturesPage() {
                   <Clock className="h-4 w-4 text-sun-500" />
                   {formatDateJour(dateDuJour())}
                 </span>
+                {cooperativeId && (
+                  <span className="inline-flex items-center gap-1.5 rounded-full bg-white/10 px-2.5 py-1 text-[10px] font-bold uppercase tracking-wider text-sun-400">
+                    <Building2 className="h-3 w-3" />
+                    {cooperatives.find(
+                      (item) => String(item.id) === String(cooperativeId),
+                    )?.nom || 'Coopérative'}
+                  </span>
+                )}
               </p>
             </div>
 
@@ -162,21 +194,60 @@ export default function DeparturesPage() {
 
       <section className="container-page py-8 lg:py-10">
         <div className="flex flex-col justify-between gap-5 sm:flex-row sm:items-center">
-          <div className="inline-flex w-full rounded-xl border border-slate-200 bg-white p-1 shadow-sm sm:w-auto">
-            {gares.map((item) => (
-              <button
-                key={item.id}
-                type="button"
-                onClick={() => setGareId(String(item.id))}
-                className={`flex-1 rounded-lg px-5 py-2.5 text-sm font-bold transition sm:flex-none ${
-                  String(item.id) === String(gareId)
-                    ? 'bg-primary-900 text-white shadow-sm'
-                    : 'text-slate-500 hover:bg-slate-50 hover:text-primary-800'
-                }`}
-              >
-                {item.nom}
-              </button>
-            ))}
+          <div className="flex flex-col gap-3">
+            <div className="inline-flex w-full rounded-xl border border-slate-200 bg-white p-1 shadow-sm sm:w-auto">
+              {gares.map((item) => (
+                <button
+                  key={item.id}
+                  type="button"
+                  onClick={() => {
+                    setGareId(String(item.id))
+                    setCooperativeId('')
+                  }}
+                  className={`flex-1 rounded-lg px-5 py-2.5 text-sm font-bold transition sm:flex-none ${
+                    String(item.id) === String(gareId)
+                      ? 'bg-primary-900 text-white shadow-sm'
+                      : 'text-slate-500 hover:bg-slate-50 hover:text-primary-800'
+                  }`}
+                >
+                  {item.nom}
+                </button>
+              ))}
+            </div>
+
+            {cooperatives.length > 1 && (
+              <div className="flex flex-wrap items-center gap-2">
+                <span className="inline-flex items-center gap-1.5 px-1 text-[10px] font-extrabold uppercase tracking-[0.14em] text-slate-400">
+                  <Building2 className="h-3.5 w-3.5" />
+                  Coopérative
+                </span>
+                <button
+                  type="button"
+                  onClick={() => setCooperativeId('')}
+                  className={`rounded-full px-3 py-1.5 text-[11px] font-bold transition ${
+                    !cooperativeId
+                      ? 'bg-primary-900 text-white shadow-sm'
+                      : 'border border-slate-200 bg-white text-slate-500 hover:border-primary-200 hover:text-primary-800'
+                  }`}
+                >
+                  Toutes
+                </button>
+                {cooperatives.map((cooperative) => (
+                  <button
+                    key={cooperative.id}
+                    type="button"
+                    onClick={() => setCooperativeId(String(cooperative.id))}
+                    className={`rounded-full px-3 py-1.5 text-[11px] font-bold transition ${
+                      String(cooperative.id) === String(cooperativeId)
+                        ? 'bg-primary-900 text-white shadow-sm'
+                        : 'border border-slate-200 bg-white text-slate-500 hover:border-primary-200 hover:text-primary-800'
+                    }`}
+                  >
+                    {cooperative.nom}
+                  </button>
+                ))}
+              </div>
+            )}
           </div>
 
           <div className="flex flex-wrap items-center gap-3">
@@ -185,7 +256,9 @@ export default function DeparturesPage() {
               {enAttente} départ{enAttente > 1 ? 's' : ''} en attente
             </span>
             <Link
-              to={`/recherche?gare=${gareId}&date=${dateDuJour()}`}
+              to={`/recherche?gare=${gareId}&date=${dateDuJour()}${
+                cooperativeId ? `&cooperative=${cooperativeId}` : ''
+              }`}
               className="btn-primary px-4 py-2.5"
             >
               Réserver un départ

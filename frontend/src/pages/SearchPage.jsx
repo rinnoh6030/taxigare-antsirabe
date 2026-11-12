@@ -2,6 +2,7 @@ import { useEffect, useMemo, useState } from 'react'
 import {
   ArrowLeft,
   ArrowRight,
+  Building2,
   Calendar,
   Clock,
   MapPin,
@@ -138,10 +139,12 @@ export default function SearchPage() {
   const navigate = useNavigate()
   const gareId = searchParams.get('gare') || ''
   const destination = searchParams.get('destination') || ''
+  const cooperative = searchParams.get('cooperative') || ''
   const date = searchParams.get('date') || dateDuJour()
 
   const [vehicules, setVehicules] = useState([])
   const [gare, setGare] = useState(null)
+  const [cooperativeSelectionnee, setCooperativeSelectionnee] = useState(null)
   const [chargement, setChargement] = useState(true)
   const [erreur, setErreur] = useState('')
 
@@ -155,13 +158,20 @@ export default function SearchPage() {
         gareId,
         destination,
         date,
+        cooperativeId: cooperative,
       }),
       gareId ? api.getGares() : Promise.resolve([]),
+      gareId ? api.getCooperatives(gareId).catch(() => []) : Promise.resolve([]),
     ])
-      .then(([resultats, gares]) => {
+      .then(([resultats, gares, cooperatives]) => {
         if (!actif) return
         setVehicules(resultats)
         setGare(gares.find((item) => String(item.id) === String(gareId)) || null)
+        setCooperativeSelectionnee(
+          cooperatives.find(
+            (item) => String(item.id) === String(cooperative),
+          ) || null,
+        )
       })
       .catch((error) => {
         if (actif) setErreur(getErrorMessage(error))
@@ -173,7 +183,7 @@ export default function SearchPage() {
     return () => {
       actif = false
     }
-  }, [gareId, destination, date])
+  }, [gareId, destination, cooperative, date])
 
   function relancerRecherche(criteres) {
     const params = new URLSearchParams({
@@ -181,6 +191,9 @@ export default function SearchPage() {
       date: criteres.date,
     })
     if (criteres.destination) params.set('destination', criteres.destination)
+    if (criteres.cooperativeId) {
+      params.set('cooperative', criteres.cooperativeId)
+    }
     navigate(`/recherche?${params.toString()}`)
   }
 
@@ -219,6 +232,12 @@ export default function SearchPage() {
                   <Calendar className="h-4 w-4 text-accent-500" />
                   {formatDateLongue(date)}
                 </span>
+                {cooperativeSelectionnee && (
+                  <span className="inline-flex items-center gap-2 rounded-full bg-primary-50 px-3 py-1 text-xs font-bold text-primary-700">
+                    <Building2 className="h-3.5 w-3.5" />
+                    Coopérative {cooperativeSelectionnee.nom}
+                  </span>
+                )}
               </div>
             </div>
             {!chargement && !erreur && (
@@ -233,7 +252,7 @@ export default function SearchPage() {
 
       <section className="container-page py-8 lg:py-10">
         <SearchForm
-          initial={{ gare: gareId, destination, date }}
+          initial={{ gare: gareId, destination, cooperative, date }}
           onSearch={relancerRecherche}
           submitLabel="Actualiser"
         />
@@ -274,7 +293,9 @@ export default function SearchPage() {
               description="Aucun véhicule ne correspond à ces critères. Essayez une autre destination, une autre date ou consultez toutes les destinations de la gare."
               action={
                 <Link
-                  to={`/recherche?gare=${gareId}&date=${date}`}
+                  to={`/recherche?gare=${gareId}&date=${date}${
+                    cooperative ? `&cooperative=${cooperative}` : ''
+                  }`}
                   className="btn-primary"
                 >
                   Voir toutes les destinations

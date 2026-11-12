@@ -1,5 +1,12 @@
 import { useEffect, useId, useState } from 'react'
-import { Calendar, ChevronDown, Info, MapPin, Search } from 'lucide-react'
+import {
+  Building2,
+  Calendar,
+  ChevronDown,
+  Info,
+  MapPin,
+  Search,
+} from 'lucide-react'
 import { api } from '../api/client'
 import { cn, dateDuJour, getErrorMessage } from '../utils/format'
 
@@ -12,13 +19,22 @@ export default function SearchForm({
   const id = useId()
   const [gares, setGares] = useState([])
   const [destinations, setDestinations] = useState([])
+  const [cooperatives, setCooperatives] = useState([])
   const [gareId, setGareId] = useState(
     initial.gareId ? String(initial.gareId) : initial.gare ? String(initial.gare) : '',
   )
   const [destination, setDestination] = useState(initial.destination || '')
+  const [cooperativeId, setCooperativeId] = useState(
+    initial.cooperativeId
+      ? String(initial.cooperativeId)
+      : initial.cooperative
+        ? String(initial.cooperative)
+        : '',
+  )
   const [date, setDate] = useState(initial.date || dateDuJour())
   const [chargementGares, setChargementGares] = useState(true)
   const [chargementDestinations, setChargementDestinations] = useState(false)
+  const [chargementCooperatives, setChargementCooperatives] = useState(false)
   const [erreur, setErreur] = useState('')
 
   useEffect(() => {
@@ -26,8 +42,22 @@ export default function SearchForm({
       initial.gareId ? String(initial.gareId) : initial.gare ? String(initial.gare) : '',
     )
     setDestination(initial.destination || '')
+    setCooperativeId(
+      initial.cooperativeId
+        ? String(initial.cooperativeId)
+        : initial.cooperative
+          ? String(initial.cooperative)
+          : '',
+    )
     setDate(initial.date || dateDuJour())
-  }, [initial.gareId, initial.gare, initial.destination, initial.date])
+  }, [
+    initial.gareId,
+    initial.gare,
+    initial.destination,
+    initial.cooperativeId,
+    initial.cooperative,
+    initial.date,
+  ])
 
   useEffect(() => {
     let actif = true
@@ -74,12 +104,42 @@ export default function SearchForm({
     }
   }, [gareId])
 
+  useEffect(() => {
+    if (!gareId) {
+      setCooperatives([])
+      return undefined
+    }
+    let actif = true
+    setChargementCooperatives(true)
+    api
+      .getCooperatives(gareId)
+      .then((donnees) => {
+        if (!actif) return
+        setCooperatives(donnees)
+        setCooperativeId((courant) =>
+          donnees.some((item) => String(item.id) === courant) ? courant : '',
+        )
+      })
+      .catch(() => {
+        if (actif) setCooperatives([])
+      })
+      .finally(() => {
+        if (actif) setChargementCooperatives(false)
+      })
+    return () => {
+      actif = false
+    }
+  }, [gareId])
+
+  const afficherCooperatives = cooperatives.length > 1
+
   function soumettre(event) {
     event.preventDefault()
     if (!gareId) return
     onSearch({
       gareId: Number(gareId),
       destination,
+      cooperativeId: cooperativeId ? Number(cooperativeId) : '',
       date,
     })
   }
@@ -92,7 +152,14 @@ export default function SearchForm({
         variant === 'hero' ? 'p-4 shadow-card sm:p-5' : 'p-4 shadow-soft sm:p-5',
       )}
     >
-      <div className="grid gap-3 lg:grid-cols-[1fr_1.15fr_0.92fr_auto] lg:items-end">
+      <div
+        className={cn(
+          'grid gap-3 lg:items-end',
+          afficherCooperatives
+            ? 'lg:grid-cols-[0.95fr_1fr_1.15fr_0.85fr_auto]'
+            : 'lg:grid-cols-[1fr_1.15fr_0.92fr_auto]',
+        )}
+      >
         <div>
           <label htmlFor={`${id}-gare`} className="label">
             Gare de départ
@@ -106,6 +173,7 @@ export default function SearchForm({
               onChange={(event) => {
                 setGareId(event.target.value)
                 setDestination('')
+                setCooperativeId('')
               }}
               disabled={chargementGares}
               required
@@ -121,6 +189,32 @@ export default function SearchForm({
             <ChevronDown className="pointer-events-none absolute right-4 top-1/2 h-4 w-4 -translate-y-1/2 text-slate-400" />
           </div>
         </div>
+
+        {afficherCooperatives && (
+          <div>
+            <label htmlFor={`${id}-cooperative`} className="label">
+              Coopérative
+            </label>
+            <div className="relative">
+              <Building2 className="field-icon" />
+              <select
+                id={`${id}-cooperative`}
+                className="input appearance-none pl-11 pr-10"
+                value={cooperativeId}
+                onChange={(event) => setCooperativeId(event.target.value)}
+                disabled={chargementCooperatives}
+              >
+                <option value="">Toutes les coopératives</option>
+                {cooperatives.map((cooperative) => (
+                  <option key={cooperative.id} value={cooperative.id}>
+                    {cooperative.nom}
+                  </option>
+                ))}
+              </select>
+              <ChevronDown className="pointer-events-none absolute right-4 top-1/2 h-4 w-4 -translate-y-1/2 text-slate-400" />
+            </div>
+          </div>
+        )}
 
         <div>
           <label htmlFor={`${id}-destination`} className="label">

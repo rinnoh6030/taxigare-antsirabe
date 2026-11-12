@@ -102,5 +102,6 @@ class Reservation(SQLModel, table=True):
     payment_reference: Optional[str] = Field(default=None, max_length=120)
     paid_at: Optional[datetime] = Field(default=None)
     annule_le: Optional[datetime] = Field(default=None)
+    motif_annulation: Optional[str] = Field(default=None, max_length=250)
     created_at: datetime = Field(default_factory=utcnow)
     embarque_le: Optional[datetime] = Field(default=None)

@@ -2,6 +2,7 @@ import { useEffect, useMemo, useState } from 'react'
 import {
   ArrowLeft,
   ArrowRight,
+  Building2,
   CheckCircle2,
   Clock,
   Mail,
@@ -184,6 +185,12 @@ export default function BookingPage() {
                   </span>
                 </div>
                 <div className="mt-4 flex flex-wrap gap-x-5 gap-y-2 text-[11px] font-semibold text-primary-200">
+                  {vehicule.cooperative && (
+                    <span className="inline-flex items-center gap-1.5 text-sun-400">
+                      <Building2 className="h-3.5 w-3.5" />
+                      Coopérative {vehicule.cooperative.nom}
+                    </span>
+                  )}
                   <span className="inline-flex items-center gap-1.5">
                     <Clock className="h-3.5 w-3.5" />
                     {formatDuration(vehicule.duree_minutes)}

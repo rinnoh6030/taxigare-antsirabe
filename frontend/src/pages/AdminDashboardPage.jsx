@@ -1,13 +1,17 @@
 import { useCallback, useEffect, useMemo, useState } from 'react'
 import {
   AlertTriangle,
+  ArrowLeft,
   CheckCircle2,
   Clock,
+  Phone,
   Plus,
   RefreshCw,
   Save,
   ScanLine,
+  Ticket,
   Users,
+  XCircle,
 } from 'lucide-react'
 import { Link } from 'react-router-dom'
 import {
@@ -30,8 +34,10 @@ import StatusBadge from '../components/StatusBadge'
 import { Spinner } from '../components/Loading'
 import {
   dateDuJour,
-  formatDateLongue,
+  formatDateHeure,
   formatDateJour,
+  formatDateLongue,
+  formatPrice,
   getErrorMessage,
   nomGare,
   pluraliser,
@@ -44,6 +50,296 @@ const FILTRES = [
   { cle: 'tous', label: 'Tous' },
 ]
 
+const LIBELLES_PAIEMENT = {
+  paye: 'Payé',
+  en_attente: 'Paiement en attente',
+  rembourse: 'Remboursé',
+  echoue: 'Échoué',
+}
+
+function ModalReservations({ open, vehicule, onClose, onNotify, onRefresh }) {
+  const [reservations, setReservations] = useState([])
+  const [chargement, setChargement] = useState(false)
+  const [erreur, setErreur] = useState('')
+  const [selection, setSelection] = useState(null)
+  const [motif, setMotif] = useState('')
+  const [annulationEnCours, setAnnulationEnCours] = useState(false)
+  const [erreurAnnulation, setErreurAnnulation] = useState('')
+  const vehiculeId = vehicule?.id
+
+  useEffect(() => {
+    if (!open || !vehiculeId) return undefined
+    let actif = true
+    setChargement(true)
+    setErreur('')
+    setSelection(null)
+    setMotif('')
+    setErreurAnnulation('')
+    api
+      .getVehicleReservations(vehiculeId)
+      .then((donnees) => {
+        if (actif) setReservations(donnees)
+      })
+      .catch((error) => {
+        if (actif) setErreur(getErrorMessage(error))
+      })
+      .finally(() => {
+        if (actif) setChargement(false)
+      })
+    return () => {
+      actif = false
+    }
+  }, [open, vehiculeId])
+
+  async function confirmerAnnulation() {
+    if (!selection) return
+    setAnnulationEnCours(true)
+    setErreurAnnulation('')
+    try {
+      const reponse = await api.annulerReservationBackoffice(
+        selection.id,
+        motif.trim(),
+      )
+      setReservations((liste) =>
+        liste.map((item) =>
+          item.id === selection.id ? reponse.reservation : item,
+        ),
+      )
+      setSelection(null)
+      setMotif('')
+      onNotify('succes', reponse.message || 'Réservation annulée.')
+      onRefresh()
+    } catch (error) {
+      setErreurAnnulation(getErrorMessage(error))
+    } finally {
+      setAnnulationEnCours(false)
+    }
+  }
+
+  return (
+    <Modal
+      open={open}
+      onClose={() => (annulationEnCours ? null : onClose())}
+      title={selection ? 'Annuler la réservation' : 'Réservations du départ'}
+      description={
+        selection
+          ? 'Confirmez l’annulation demandée par le passager.'
+          : vehicule
+            ? `${vehicule.destination} · ${vehicule.heure_depart} · ${vehicule.matricule}`
+            : undefined
+      }
+      size="lg"
+    >
+      {selection ? (
+        <div className="space-y-4">
+          <button
+            type="button"
+            onClick={() => {
+              setSelection(null)
+              setErreurAnnulation('')
+            }}
+            className="inline-flex items-center gap-2 text-xs font-bold text-slate-400 transition hover:text-primary-800"
+            disabled={annulationEnCours}
+          >
+            <ArrowLeft className="h-3.5 w-3.5" />
+            Retour à la liste
+          </button>
+
+          <div className="rounded-xl border border-accent-100 bg-accent-50 p-4">
+            <p className="font-display text-lg font-bold text-accent-800">
+              {selection.nom_passager}
+            </p>
+            <p className="mt-1 text-xs leading-relaxed text-accent-700">
+              {selection.nombre_places}{' '}
+              {pluraliser('place', selection.nombre_places)} seront libérées
+              immédiatement sur ce départ.
+              {selection.payment_status === 'paye'
+                ? ` Le paiement de ${formatPrice(selection.total)} sera marqué comme remboursé.`
+                : ''}
+            </p>
+            <p className="mt-2 font-mono text-[10px] font-semibold text-accent-600">
+              {selection.code_qr}
+            </p>
+          </div>
+
+          <div>
+            <label htmlFor="motif-reservation" className="label">
+              Motif (facultatif)
+            </label>
+            <textarea
+              id="motif-reservation"
+              className="input min-h-24 resize-none"
+              placeholder="Ex. annulation demandée par le passager par téléphone…"
+              value={motif}
+              onChange={(event) => setMotif(event.target.value)}
+              maxLength={250}
+              disabled={annulationEnCours}
+            />
+          </div>
+
+          {erreurAnnulation && (
+            <p className="rounded-xl bg-accent-50 px-4 py-3 text-xs font-semibold text-accent-700">
+              {erreurAnnulation}
+            </p>
+          )}
+
+          <div className="flex flex-col-reverse gap-2 border-t border-slate-100 pt-5 sm:flex-row sm:justify-end">
+            <button
+              type="button"
+              className="btn-secondary"
+              onClick={() => {
+                setSelection(null)
+                setErreurAnnulation('')
+              }}
+              disabled={annulationEnCours}
+            >
+              Conserver la réservation
+            </button>
+            <button
+              type="button"
+              className="btn-accent"
+              onClick={confirmerAnnulation}
+              disabled={annulationEnCours}
+            >
+              {annulationEnCours ? (
+                <>
+                  <Spinner className="h-4 w-4" />
+                  Annulation…
+                </>
+              ) : (
+                <>
+                  <XCircle className="h-4 w-4" />
+                  Confirmer l’annulation
+                </>
+              )}
+            </button>
+          </div>
+        </div>
+      ) : chargement ? (
+        <div className="flex min-h-52 items-center justify-center text-slate-400">
+          <Spinner className="h-6 w-6" />
+        </div>
+      ) : erreur ? (
+        <div className="rounded-xl border border-accent-100 bg-accent-50 px-4 py-3 text-xs font-semibold text-accent-700">
+          {erreur}
+        </div>
+      ) : reservations.length === 0 ? (
+        <div className="rounded-xl border border-dashed border-slate-200 px-5 py-10 text-center">
+          <Ticket className="mx-auto h-8 w-8 text-slate-300" />
+          <p className="mt-3 text-sm font-bold text-primary-900">
+            Aucune réservation
+          </p>
+          <p className="mt-1 text-xs text-slate-500">
+            Aucun passager n’a encore réservé sur ce départ.
+          </p>
+        </div>
+      ) : (
+        <div className="space-y-3">
+          <div className="flex items-center justify-between gap-3 rounded-xl bg-primary-50 px-4 py-2.5 text-[11px] font-bold text-primary-700">
+            <span>
+              {reservations.filter((item) => item.statut !== 'annule').length}{' '}
+              réservation
+              {reservations.filter((item) => item.statut !== 'annule').length > 1
+                ? 's'
+                : ''}{' '}
+              active
+              {reservations.filter((item) => item.statut !== 'annule').length > 1
+                ? 's'
+                : ''}
+            </span>
+            <span>
+              {vehicule?.places_reservees} / {vehicule?.capacite} places réservées
+            </span>
+          </div>
+
+          {reservations.map((reservation) => {
+            const annulee = reservation.statut === 'annule'
+            const embarquee = reservation.statut === 'embarque'
+            return (
+              <article
+                key={reservation.id}
+                className={`rounded-xl border p-4 ${
+                  annulee
+                    ? 'border-slate-200 bg-slate-50/70 opacity-75'
+                    : 'border-slate-200 bg-white'
+                }`}
+              >
+                <div className="flex flex-wrap items-start justify-between gap-3">
+                  <div className="min-w-0">
+                    <div className="flex flex-wrap items-center gap-2">
+                      <p className="font-display text-sm font-extrabold text-primary-900">
+                        {reservation.nom_passager}
+                      </p>
+                      <StatusBadge statut={reservation.statut} />
+                    </div>
+                    <p className="mt-1 flex flex-wrap items-center gap-x-4 gap-y-1 text-[11px] font-semibold text-slate-500">
+                      <span className="inline-flex items-center gap-1.5">
+                        <Users className="h-3 w-3 text-slate-400" />
+                        {reservation.nombre_places}{' '}
+                        {pluraliser('place', reservation.nombre_places)}
+                      </span>
+                      {reservation.telephone_passager && (
+                        <a
+                          href={`tel:${reservation.telephone_passager.replace(/[^0-9+]/g, '')}`}
+                          className="inline-flex items-center gap-1.5 text-primary-600 transition hover:text-accent-500"
+                        >
+                          <Phone className="h-3 w-3" />
+                          {reservation.telephone_passager}
+                        </a>
+                      )}
+                      <span
+                        className={`inline-flex items-center gap-1 ${
+                          reservation.payment_status === 'paye'
+                            ? 'text-emerald-600'
+                            : reservation.payment_status === 'rembourse'
+                              ? 'text-sky-600'
+                              : 'text-amber-600'
+                        }`}
+                      >
+                        {LIBELLES_PAIEMENT[reservation.payment_status] ||
+                          reservation.payment_status}
+                      </span>
+                    </p>
+                    <p className="mt-1 font-mono text-[9px] font-semibold text-slate-400">
+                      {reservation.code_qr} · {formatDateHeure(reservation.created_at)}
+                    </p>
+                    {reservation.motif_annulation && annulee && (
+                      <p className="mt-1 text-[10px] font-semibold text-accent-600">
+                        Motif : {reservation.motif_annulation}
+                      </p>
+                    )}
+                  </div>
+
+                  <div className="flex shrink-0 items-center gap-3">
+                    <span className="font-display text-sm font-extrabold text-primary-900">
+                      {formatPrice(reservation.total)}
+                    </span>
+                    {reservation.annulable_par_gare && !embarque && !annulee && (
+                      <button
+                        type="button"
+                        onClick={() => {
+                          setSelection(reservation)
+                          setMotif('')
+                          setErreurAnnulation('')
+                        }}
+                        className="inline-flex items-center gap-1.5 rounded-lg border border-accent-100 bg-white px-3 py-2 text-[10px] font-extrabold text-accent-600 transition hover:bg-accent-50"
+                        disabled={annulationEnCours}
+                      >
+                        <XCircle className="h-3.5 w-3.5" />
+                        Annuler
+                      </button>
+                    )}
+                  </div>
+                </div>
+              </article>
+            )
+          })}
+        </div>
+      )}
+    </Modal>
+  )
+}
+
 function CarteVehiculeAdmin({ vehicule, onRefresh, onNotify }) {
   const [passagers, setPassagers] = useState(
     vehicule.passagers_a_bord === null ? '' : String(vehicule.passagers_a_bord),
@@ -52,6 +348,7 @@ function CarteVehiculeAdmin({ vehicule, onRefresh, onNotify }) {
   const [action, setAction] = useState('')
   const [modalDepart, setModalDepart] = useState(false)
   const [modalAnnuler, setModalAnnuler] = useState(false)
+  const [modalReservations, setModalReservations] = useState(false)
   const [motif, setMotif] = useState('')
   const [erreurAction, setErreurAction] = useState('')
 
@@ -311,6 +608,15 @@ function CarteVehiculeAdmin({ vehicule, onRefresh, onNotify }) {
                 </button>
                 <button
                   type="button"
+                  onClick={() => setModalReservations(true)}
+                  className="btn-secondary w-full"
+                  disabled={Boolean(action)}
+                >
+                  <Ticket className="h-4 w-4" />
+                  Gérer les réservations
+                </button>
+                <button
+                  type="button"
                   onClick={() => {
                     setErreurAction('')
                     setModalAnnuler(true)
@@ -322,13 +628,23 @@ function CarteVehiculeAdmin({ vehicule, onRefresh, onNotify }) {
                 </button>
               </>
             ) : (
-              <Link
-                to="/admin/scan"
-                className="btn-secondary w-full"
-              >
-                <ScanLine className="h-4 w-4" />
-                Scanner les billets
-              </Link>
+              <>
+                <Link
+                  to="/admin/scan"
+                  className="btn-secondary w-full"
+                >
+                  <ScanLine className="h-4 w-4" />
+                  Scanner les billets
+                </Link>
+                <button
+                  type="button"
+                  onClick={() => setModalReservations(true)}
+                  className="btn-secondary w-full"
+                >
+                  <Ticket className="h-4 w-4" />
+                  Voir les réservations
+                </button>
+              </>
             )}
           </div>
         </div>
@@ -472,6 +788,14 @@ function CarteVehiculeAdmin({ vehicule, onRefresh, onNotify }) {
           </div>
         </div>
       </Modal>
+
+      <ModalReservations
+        open={modalReservations}
+        vehicule={vehicule}
+        onClose={() => setModalReservations(false)}
+        onNotify={onNotify}
+        onRefresh={onRefresh}
+      />
     </>
   )
 }

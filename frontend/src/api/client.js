@@ -119,20 +119,23 @@ export const api = {
 
   getGares: () => request('/gares'),
   getDestinations: (gareId) => request(`/gares/${gareId}/destinations`),
+  getCooperatives: (gareId) => request(`/gares/${gareId}/cooperatives`),
   getVehicle: (vehiculeId) => request(`/vehicules/${vehiculeId}`),
-  searchVehicles: ({ gareId, destination, date }) =>
+  searchVehicles: ({ gareId, destination, date, cooperativeId }) =>
     request(
       `/recherche${queryString({
         gare_id: gareId,
         destination,
         date,
+        cooperative_id: cooperativeId,
       })}`,
     ),
-  getPublicDepartures: ({ gareId, date } = {}) =>
+  getPublicDepartures: ({ gareId, date, cooperativeId } = {}) =>
     request(
       `/departs-publics${queryString({
         gare_id: gareId,
         date,
+        cooperative_id: cooperativeId,
       })}`,
     ),
 
@@ -184,6 +187,11 @@ export const api = {
     }),
   cancelVehicle: (vehiculeId, motif) =>
     request(`/backoffice/vehicules/${vehiculeId}/annuler`, {
+      method: 'POST',
+      body: { motif },
+    }),
+  annulerReservationBackoffice: (reservationId, motif) =>
+    request(`/backoffice/reservations/${reservationId}/annuler`, {
       method: 'POST',
       body: { motif },
     }),
